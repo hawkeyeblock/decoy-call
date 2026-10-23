@@ -1,0 +1,1092 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Decoy Call</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f1f5f3">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0e1513">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Roboto+Flex:opsz,wght@8..144,300..800&family=Schibsted+Grotesk:wght@400..800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0..1,0&icon_names=add_call,battery_full,call,call_end,chat,check_circle,chevron_left,chevron_right,delete,dialpad,keyboard_arrow_down,mic_off,pause,person,person_add,phone_in_talk,play_arrow,signal_cellular_4_bar,stop,upload,vibration,videocam,volume_up,wifi&display=block">
+<style>
+:root{
+  /* Layout: one phone-width column. A live caller card and saved contacts lead, then When / Sound / On the line / Call screen groups, with a sticky Ring button at the bottom. The fake call itself is a separate full-screen layer styled like the Phone app. */
+  --bg:oklch(0.965 0.007 165);
+  --panel:oklch(0.995 0.003 165);
+  --ink:oklch(0.22 0.02 170);
+  --muted:oklch(0.47 0.02 170);
+  --line:oklch(0.88 0.012 170);
+  --accent:oklch(0.55 0.15 150);
+  --accent-ink:oklch(0.985 0.01 150);
+  --accent-soft:oklch(0.93 0.05 150);
+  --danger:oklch(0.56 0.19 27);
+  --off:oklch(0 0 0);
+  --off-ink:oklch(0.58 0.01 165);
+  --f-ui:"Schibsted Grotesk","Segoe UI",Roboto,system-ui,sans-serif;
+  --f-mono:"DM Mono",ui-monospace,"Roboto Mono",monospace;
+  --f-phone:"Google Sans","Roboto Flex",Roboto,system-ui,sans-serif;
+  --h:255;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:oklch(0.17 0.012 170);--panel:oklch(0.215 0.014 170);--ink:oklch(0.94 0.01 160);--muted:oklch(0.72 0.016 160);
+    --line:oklch(0.33 0.016 170);--accent:oklch(0.74 0.16 150);--accent-ink:oklch(0.18 0.04 150);--accent-soft:oklch(0.31 0.06 150);
+    --danger:oklch(0.7 0.17 27);--off-ink:oklch(0.55 0.01 165);color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:oklch(0.17 0.012 170);--panel:oklch(0.215 0.014 170);--ink:oklch(0.94 0.01 160);--muted:oklch(0.72 0.016 160);
+  --line:oklch(0.33 0.016 170);--accent:oklch(0.74 0.16 150);--accent-ink:oklch(0.18 0.04 150);--accent-soft:oklch(0.31 0.06 150);
+  --danger:oklch(0.7 0.17 27);--off-ink:oklch(0.55 0.01 165);color-scheme:dark;
+}
+/* Phone-app palettes, tinted by --h like Material You wallpaper colors. JS picks one to match the phone. */
+.cs-light{--cs-bg:oklch(0.975 0.012 var(--h));--cs-surface:oklch(0.925 0.022 var(--h));--cs-surface-hi:oklch(0.89 0.028 var(--h));--cs-on:oklch(0.2 0.02 var(--h));--cs-on-var:oklch(0.43 0.03 var(--h));--cs-pc:oklch(0.86 0.07 var(--h));--cs-on-pc:oklch(0.3 0.09 var(--h));--cs-sel:oklch(0.48 0.13 var(--h));--cs-on-sel:oklch(0.98 0.01 var(--h));--cs-green:oklch(0.58 0.16 148);--cs-red:oklch(0.57 0.2 27);--cs-on-signal:oklch(0.99 0 0)}
+.cs-dark{--cs-bg:oklch(0.165 0.016 var(--h));--cs-surface:oklch(0.25 0.022 var(--h));--cs-surface-hi:oklch(0.3 0.028 var(--h));--cs-on:oklch(0.93 0.014 var(--h));--cs-on-var:oklch(0.78 0.028 var(--h));--cs-pc:oklch(0.42 0.09 var(--h));--cs-on-pc:oklch(0.93 0.05 var(--h));--cs-sel:oklch(0.82 0.1 var(--h));--cs-on-sel:oklch(0.25 0.07 var(--h));--cs-green:oklch(0.64 0.16 148);--cs-red:oklch(0.6 0.2 27);--cs-on-signal:oklch(0.99 0 0)}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.45 var(--f-ui);-webkit-tap-highlight-color:transparent}
+html.lock,html.lock body{overflow:hidden;overscroll-behavior:none}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+button:disabled{cursor:default;opacity:.45}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.ms{font-family:"Material Symbols Rounded";font-weight:normal;font-style:normal;font-size:24px;line-height:1;letter-spacing:normal;text-transform:none;display:inline-block;white-space:nowrap;direction:ltr;-webkit-font-smoothing:antialiased;font-feature-settings:"liga";font-variation-settings:"FILL" 0,"wght" 400,"GRAD" 0,"opsz" 24;user-select:none;flex:none}
+.ms.fill{font-variation-settings:"FILL" 1,"wght" 400,"GRAD" 0,"opsz" 24}
+
+/* ---------- Setup ---------- */
+.app{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:22px 0;display:flex;flex-direction:column;gap:22px}
+.wordmark{margin:0;font-size:1.75rem;font-weight:800;letter-spacing:-0.025em;line-height:1.1;display:flex;align-items:center;gap:12px;text-wrap:balance}
+.live-dot{width:11px;height:11px;border-radius:50%;background:var(--accent);flex:none;animation:ping 2.2s ease-out infinite}
+@keyframes ping{0%{box-shadow:0 0 0 0 color-mix(in oklch,var(--accent) 55%,transparent)}75%,100%{box-shadow:0 0 0 11px color-mix(in oklch,var(--accent) 0%,transparent)}}
+.tagline{margin:8px 0 0;color:var(--muted);max-width:46ch;text-wrap:pretty}
+.group{display:flex;flex-direction:column;gap:10px;min-width:0}
+.eyebrow{margin:0;padding-left:4px;font:500 .72rem/1 var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:16px;min-width:0}
+
+.cc-preview{background:var(--cs-bg);color:var(--cs-on);border-radius:14px;padding:16px;display:flex;align-items:center;gap:16px;font-family:var(--f-phone);transition:background-color .3s}
+.cc-text{min-width:0;display:flex;flex-direction:column;gap:2px}
+.cc-kicker{font-size:12px;color:var(--cs-on-var)}
+.cc-name{font-size:22px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cc-sub{font-size:13px;color:var(--cs-on-var);font-variant-numeric:tabular-nums;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cc-sub:empty{display:none}
+
+.clist{display:flex;flex-direction:column;gap:6px}
+.crow{display:flex;align-items:center;gap:12px;width:100%;padding:8px 12px 8px 8px;border-radius:14px;border:1px solid var(--line);background:transparent;text-align:left;min-width:0;transition:background-color .15s,border-color .15s}
+.crow[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent)}
+.cav{width:40px;height:40px;border-radius:50%;flex:none;display:grid;place-items:center;overflow:hidden;background:var(--line);color:var(--ink);font-weight:700;font-size:1.05rem}
+.cav img{width:100%;height:100%;object-fit:cover;display:block}
+.cav .ms{font-size:22px}
+.cmeta{flex:1;min-width:0;display:flex;flex-direction:column}
+.cmeta b{font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.cmeta small{font:.8rem var(--f-mono);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-variant-numeric:tabular-nums}
+.crow .chk{color:var(--accent);opacity:0;transition:opacity .15s}
+.crow[aria-pressed="true"] .chk{opacity:1}
+.editor{border-top:1px solid var(--line);padding-top:16px;display:flex;flex-direction:column;gap:14px}
+.editor-h{margin:0;font-size:.8rem;font-weight:700;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.field{display:flex;flex-direction:column;gap:6px;min-width:0;margin:0}
+.field>span{font-size:.8rem;font-weight:600;color:var(--muted)}
+.field.inline{flex-direction:row;align-items:center;justify-content:space-between;gap:12px}
+input[type=text],input[type=tel],select{width:100%;height:46px;border-radius:12px;border:1px solid var(--line);background:var(--bg);padding:0 12px;font-size:1rem;font-weight:500;min-width:0}
+.field.inline select{width:auto}
+input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.row2{display:grid;grid-template-columns:minmax(0,1fr) 112px;gap:10px}
+
+.opts{display:flex;flex-wrap:wrap;gap:8px}
+.opt{height:40px;padding:0 15px;border-radius:20px;border:1px solid var(--line);background:transparent;font-weight:500;font-size:.95rem;transition:background-color .15s,color .15s,border-color .15s}
+.opt.num{font-family:var(--f-mono);font-size:.9rem}
+.opt[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+
+.btnrow{display:flex;flex-wrap:wrap;align-items:center;gap:10px;min-width:0}
+.btnrow .push{margin-left:auto}
+.btn{display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 16px 0 12px;border-radius:21px;border:1px solid var(--line);background:var(--bg);font-weight:600;font-size:.92rem;white-space:nowrap}
+.btn .ms{font-size:20px}
+.btn.quiet{border-color:transparent;background:transparent;color:var(--muted);padding:0 10px}
+.btn.wide{justify-content:center;padding:0 16px}
+.btn.danger{color:var(--danger);background:transparent;border-color:color-mix(in oklch,var(--danger) 35%,var(--line))}
+.btn.danger.armed{background:var(--danger);color:var(--panel);border-color:var(--danger)}
+
+.tones{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;transition:opacity .2s}
+.tones.off{opacity:.42}
+.tone{display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:transparent;text-align:left;min-width:0}
+.tone .tn{font-weight:700}
+.tone .td{font-size:.82rem;color:var(--muted)}
+.tone[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);box-shadow:inset 0 0 0 1px var(--accent)}
+.filename{font:.82rem var(--f-mono);color:var(--muted);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+
+.switch{display:flex;align-items:center;gap:12px;cursor:pointer;font-weight:600;position:relative}
+.switch input{position:absolute;opacity:0;width:1px;height:1px}
+.switch .track{width:48px;height:28px;border-radius:14px;background:var(--line);position:relative;transition:background-color .2s;flex:none}
+.switch .track::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:var(--panel);box-shadow:0 1px 2px color-mix(in oklch,var(--ink) 30%,transparent);transition:transform .2s}
+.switch input:checked + .track{background:var(--accent)}
+.switch input:checked + .track::after{transform:translateX(20px)}
+.switch input:focus-visible + .track{outline:2px solid var(--accent);outline-offset:2px}
+
+.swatches{display:flex;flex-wrap:wrap;gap:12px}
+.swatch{width:38px;height:38px;border-radius:50%;border:0;background:var(--sw);box-shadow:inset 0 0 0 1px color-mix(in oklch,var(--ink) 12%,transparent)}
+.swatch[aria-pressed="true"]{box-shadow:0 0 0 3px var(--panel),0 0 0 5px var(--ink)}
+
+.note{margin:0;font-size:.84rem;color:var(--muted);text-wrap:pretty}
+.note b{color:var(--ink)}
+.note.warn{color:var(--danger)}
+
+.tips{border:1px solid var(--line);border-radius:20px;padding:14px 16px;background:var(--panel)}
+.tips summary{cursor:pointer;font-weight:700;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.tips summary::-webkit-details-marker{display:none}
+.tips summary::after{content:"+";font:500 1.2rem/1 var(--f-mono);color:var(--muted)}
+.tips[open] summary::after{content:"\2212"}
+.tips ul{margin:10px 0 0;padding-left:1.1em;display:flex;flex-direction:column;gap:8px;color:var(--muted);font-size:.9rem;max-width:62ch}
+.tips li b{color:var(--ink)}
+
+.startbar{position:sticky;bottom:0;z-index:5;padding-block:14px calc(14px + env(safe-area-inset-bottom,0px));background:linear-gradient(to top,var(--bg) 72%,color-mix(in oklch,var(--bg) 0%,transparent));display:flex;flex-direction:column;gap:8px}
+.start{height:60px;border-radius:30px;border:0;padding:0 22px;background:var(--accent);color:var(--accent-ink);font:700 1.1rem var(--f-ui);display:flex;align-items:center;justify-content:center;gap:10px;font-variant-numeric:tabular-nums;transition:transform .12s;min-width:0}
+.start:active{transform:scale(.98)}
+.start .ms{font-size:26px}
+.startlbl{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.startnote{margin:0;text-align:center;font-size:.8rem;color:var(--muted)}
+
+.toast{position:fixed;left:50%;bottom:calc(120px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-weight:600;font-size:.9rem;z-index:40;max-width:calc(100% - 32px);box-shadow:0 6px 20px color-mix(in oklch,var(--ink) 25%,transparent)}
+
+/* ---------- Screen off (waiting) ---------- */
+.wait{position:fixed;inset:0;z-index:60;background:var(--off);display:flex;align-items:flex-end;justify-content:center;padding-bottom:calc(36px + env(safe-area-inset-bottom,0px));touch-action:none;user-select:none;-webkit-user-select:none;cursor:default}
+.wait-msg{font:500 12.5px var(--f-mono);color:var(--off-ink);opacity:0;transition:opacity .6s;text-align:center;font-variant-numeric:tabular-nums}
+.wait-msg.show,.wait.holding .wait-msg{opacity:1}
+.holdbar{display:block;width:120px;height:2px;margin:10px auto 0;background:color-mix(in oklch,var(--off-ink) 30%,transparent);border-radius:1px;overflow:hidden}
+.holdbar span{display:block;height:100%;background:var(--off-ink);transform:scaleX(0);transform-origin:left}
+.wait.holding .holdbar span{transform:scaleX(1);transition:transform 1.2s linear}
+
+/* ---------- Phone call screen ---------- */
+.call{position:fixed;inset:0;z-index:50;background:var(--cs-bg);color:var(--cs-on);font-family:var(--f-phone);opacity:0;transition:opacity .2s ease;user-select:none;-webkit-user-select:none;overscroll-behavior:none}
+.call.in{opacity:1}
+.call button:focus-visible{outline:2px solid var(--cs-on);outline-offset:3px}
+.phone{height:100%;max-width:440px;margin:0 auto;display:flex;flex-direction:column;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px));padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.call.fs .phone{padding-top:0;padding-bottom:0}
+.sbar,.navbar{display:none}
+.call.fs .sbar{display:flex;align-items:center;justify-content:space-between;height:max(32px,env(safe-area-inset-top,0px));padding:0 4px;font-size:14px;font-weight:500;font-variant-numeric:tabular-nums;flex:none}
+.sb-icons{display:flex;align-items:center;gap:4px}
+.sb-icons .ms{font-size:17px}
+.call.fs .navbar{display:flex;align-items:center;justify-content:center;height:max(24px,env(safe-area-inset-bottom,0px));flex:none}
+.navbar span{width:108px;height:4px;border-radius:2px;background:var(--cs-on);opacity:.5}
+
+.ring,.live{flex:1;display:flex;flex-direction:column;min-height:0}
+.who{text-align:center;padding-top:clamp(20px,6vh,60px);display:flex;flex-direction:column;align-items:center;gap:6px;flex:none}
+.kicker{font-size:15px;color:var(--cs-on-var)}
+.cname{margin:0;font-weight:400;font-size:clamp(30px,9.5vw,40px);line-height:1.15;max-width:100%;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-wrap:balance}
+.csub{font-size:16px;color:var(--cs-on-var);font-variant-numeric:tabular-nums}
+.csub:empty{display:none}
+.stage{flex:1;display:flex;align-items:center;justify-content:center;min-height:0;padding:12px 0}
+
+.cookie{--s:64px;width:var(--s);height:var(--s);max-width:100%;clip-path:var(--cookie,circle(50%));background:var(--cs-pc);color:var(--cs-on-pc);display:grid;place-items:center;flex:none}
+.cookie.big{--s:min(58vw,30vh,248px)}
+.cookie.sm{--s:min(34vw,17vh,132px)}
+.cookie .face{width:100%;height:100%;display:grid;place-items:center;font-size:calc(var(--s) * .42);font-weight:400;line-height:1;overflow:hidden}
+.cookie .face img{width:104%;height:104%;max-width:none;object-fit:cover;display:block}
+.cookie .face .ms{font-size:calc(var(--s) * .52)}
+.spin{animation:spin 18s linear infinite}
+.spin .face{animation:spin 18s linear infinite reverse}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.chiprow{display:flex;justify-content:center;gap:10px;padding-bottom:22px;flex:none}
+.mchip{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 18px 0 14px;border-radius:20px;border:0;background:var(--cs-surface);color:var(--cs-on);font-size:15px;font-weight:500}
+.mchip .ms{font-size:20px}
+.answer{padding-bottom:clamp(22px,5.5vh,48px);flex:none}
+
+.slider{--pa:0;--pd:0;position:relative;height:76px;border-radius:38px;background:var(--cs-surface);overflow:hidden;touch-action:none}
+.slider .fill{position:absolute;inset:0;border-radius:inherit;pointer-events:none}
+.slider .fill.ans{background:var(--cs-green);opacity:var(--pa)}
+.slider .fill.dec{background:var(--cs-red);opacity:var(--pd)}
+.slider .end{position:absolute;top:50%;width:48px;height:48px;margin-top:-24px;display:grid;place-items:center;pointer-events:none}
+.slider .end .ms{font-size:28px}
+.slider .end.dec{left:14px;color:color-mix(in oklch,var(--cs-red),var(--cs-on-signal) calc(var(--pd) * 100%));transform:scale(calc(1 + var(--pd) * .2))}
+.slider .end.ans{right:14px;color:color-mix(in oklch,var(--cs-green),var(--cs-on-signal) calc(var(--pa) * 100%));transform:scale(calc(1 + var(--pa) * .2))}
+.slider .hint{position:absolute;top:50%;margin-top:-12px;color:var(--cs-on-var);opacity:0;pointer-events:none}
+.slider .hint.l{left:calc(50% - 76px);animation:hintL 2.2s ease-in-out infinite}
+.slider .hint.r{right:calc(50% - 76px);animation:hintR 2.2s ease-in-out infinite}
+@keyframes hintR{0%{opacity:0;transform:translateX(-8px)}45%{opacity:.85}100%{opacity:0;transform:translateX(10px)}}
+@keyframes hintL{0%{opacity:0;transform:translateX(8px)}45%{opacity:.85}100%{opacity:0;transform:translateX(-10px)}}
+.slider.dragging .hint{animation:none;opacity:0}
+.thumb{position:absolute;top:6px;left:calc(50% - 32px);width:64px;height:64px;border-radius:50%;border:0;padding:0;z-index:2;background:var(--cs-on);color:color-mix(in oklch,color-mix(in oklch,var(--cs-bg),var(--cs-green) calc(var(--pa) * 100%)),var(--cs-red) calc(var(--pd) * 100%));display:grid;place-items:center;touch-action:none;cursor:grab;box-shadow:0 2px 10px color-mix(in oklch,var(--cs-bg) 60%,transparent)}
+.thumb .ms{font-size:30px;transform:rotate(calc(var(--pd) * 135deg))}
+.slider.spring .thumb{transition:transform .38s cubic-bezier(.25,1.35,.5,1)}
+.slider.spring .fill{transition:opacity .3s}
+.slider.nudge .thumb{animation:nudge .7s ease}
+@keyframes nudge{0%,100%{transform:translateX(0)}25%{transform:translateX(24px)}55%{transform:translateX(-12px)}80%{transform:translateX(5px)}}
+.slabels{display:flex;justify-content:space-between;padding:10px 18px 0;font-size:13px;color:var(--cs-on-var)}
+
+.taps{display:flex;gap:16px}
+.tapbtn{flex:1;min-width:0;height:64px;border-radius:32px;border:0;display:flex;align-items:center;justify-content:center;gap:10px;font-size:17px;font-weight:500;color:var(--cs-on-signal);transition:border-radius .2s}
+.tapbtn:active{border-radius:18px}
+.tapbtn.dec{background:var(--cs-red)}
+.tapbtn.ans{background:var(--cs-green)}
+
+.live .who{gap:10px;padding-top:clamp(18px,5vh,52px)}
+.live .who .cookie{margin-bottom:8px}
+.live.kp .who .cookie{display:none}
+.controls{margin-top:auto;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px 14px;padding:16px 0 28px}
+.ctl{display:flex;flex-direction:column;align-items:center;gap:8px;background:none;border:0;padding:0;color:var(--cs-on);font-size:13px;font-weight:500;min-width:0}
+.ctl .pill{width:100%;max-width:96px;height:56px;border-radius:28px;background:var(--cs-surface);display:grid;place-items:center;transition:border-radius .28s cubic-bezier(.2,.8,.2,1),background-color .2s,color .2s}
+.ctl .ms{font-size:26px}
+.ctl.on .pill{border-radius:16px;background:var(--cs-sel);color:var(--cs-on-sel)}
+.ctl.on .ms{font-variation-settings:"FILL" 1,"wght" 400,"GRAD" 0,"opsz" 24}
+.ctl.blip .pill{border-radius:16px;background:var(--cs-surface-hi)}
+
+.keypad{margin-top:auto;display:flex;flex-direction:column;gap:6px;padding:8px 0 16px}
+.kp-display{min-height:44px;text-align:center;font-size:30px;letter-spacing:.06em;font-variant-numeric:tabular-nums;overflow:hidden;white-space:nowrap}
+.kp-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px 18px}
+.key{height:clamp(52px,8vh,66px);border:0;border-radius:33px;background:transparent;color:var(--cs-on);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:var(--f-phone);padding:0}
+.key:active{background:var(--cs-surface)}
+.key b{font-size:28px;font-weight:400;line-height:1.1}
+.key small{font-size:10px;letter-spacing:.14em;color:var(--cs-on-var);min-height:12px}
+.kp-hide{align-self:center;display:inline-flex;align-items:center;gap:6px;background:none;border:0;color:var(--cs-on-var);font-size:14px;font-weight:500;height:36px}
+
+.endbtn{align-self:center;flex:none;width:min(100%,280px);height:64px;border-radius:32px;border:0;background:var(--cs-red);color:var(--cs-on-signal);display:grid;place-items:center;margin-bottom:clamp(18px,4.5vh,44px);transition:border-radius .2s}
+.endbtn:active{border-radius:20px}
+.endbtn .ms{font-size:32px}
+.live.ended .controls,.live.ended .keypad,.live.ended .endbtn{opacity:.35;pointer-events:none;transition:opacity .3s}
+
+.scrim{position:absolute;inset:0;z-index:5;background:color-mix(in oklch,var(--cs-bg) 35%,oklch(0 0 0 / .45))}
+.sheet{position:absolute;left:0;right:0;bottom:0;max-width:440px;margin:0 auto;background:var(--cs-surface);border-radius:28px 28px 0 0;padding:8px 0 calc(16px + env(safe-area-inset-bottom,0px));animation:up .26s cubic-bezier(.2,.8,.2,1)}
+@keyframes up{from{transform:translateY(100%)}to{transform:none}}
+.grab{width:32px;height:4px;border-radius:2px;background:var(--cs-on-var);opacity:.5;margin:8px auto 10px}
+#replies button{display:block;width:100%;text-align:left;padding:16px max(24px,env(safe-area-inset-left,0px));background:none;border:0;color:var(--cs-on);font-size:16px}
+#replies button:active{background:var(--cs-surface-hi)}
+
+@media (prefers-reduced-motion: reduce){
+  .spin,.spin .face{animation-duration:90s}
+  .slider .hint{animation:none;opacity:.6}
+  .live-dot{animation:none}
+  .sheet{animation:none}
+}
+</style>
+</head>
+<body>
+
+
+<main class="app">
+  <header>
+    <h1 class="wordmark"><span class="live-dot" aria-hidden="true"></span>Decoy Call</h1>
+    <p class="tagline">A fake incoming call that rings and looks like your Phone app. Pick who's calling, put the phone down, and answer when it rings.</p>
+  </header>
+
+  <section class="group" aria-labelledby="h-caller">
+    <h2 class="eyebrow" id="h-caller">Who's calling</h2>
+    <div class="panel">
+      <div class="cc-preview cs-dark" id="ccPrev" aria-hidden="true">
+        <div class="cookie mini spin"><div class="face" id="miniFace"></div></div>
+        <div class="cc-text">
+          <div class="cc-kicker">Incoming call</div>
+          <div class="cc-name" id="miniName"></div>
+          <div class="cc-sub" id="miniSub"></div>
+        </div>
+      </div>
+      <div class="clist" id="contactList" role="group" aria-label="Saved contacts"></div>
+      <div class="btnrow"><button type="button" class="btn" id="addContact"><span class="ms">person_add</span>New contact</button></div>
+
+      <div class="editor">
+        <p class="editor-h" id="editorH">Edit contact</p>
+        <label class="field" for="fName"><span>Name</span><input id="fName" type="text" autocomplete="off" placeholder="Leave blank to show just the number"></label>
+        <div class="row2">
+          <label class="field" for="fNumber"><span>Number</span><input id="fNumber" type="tel" inputmode="tel" autocomplete="off" class="mono"></label>
+          <label class="field" for="fLabel"><span>Label</span><select id="fLabel"><option value="Mobile">Mobile</option><option value="Home">Home</option><option value="Work">Work</option><option value="">None</option></select></label>
+        </div>
+        <div class="field"><span>Their voice on the line</span>
+          <div class="opts" id="voiceSeg" role="group" aria-label="Their voice">
+            <button type="button" class="opt" data-v="low" aria-pressed="false">Lower</button>
+            <button type="button" class="opt" data-v="high" aria-pressed="false">Higher</button>
+          </div>
+        </div>
+        <div class="btnrow">
+          <button type="button" class="btn" id="photoBtn"><span class="ms">upload</span><span class="lbl">Add photo</span></button>
+          <button type="button" class="btn quiet" id="photoClear" hidden>Remove photo</button>
+          <button type="button" class="btn danger push" id="delContact"><span class="ms">delete</span><span class="lbl">Delete</span></button>
+          <input type="file" id="fPhoto" accept="image/*" hidden>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="group" aria-labelledby="h-when">
+    <h2 class="eyebrow" id="h-when">When it rings</h2>
+    <div class="panel">
+      <div class="opts" id="delaySeg" role="group" aria-label="Delay before it rings"></div>
+      <label class="field inline" for="fRingFor"><span>Rings for</span><select id="fRingFor"><option value="20">20 s</option><option value="30">30 s</option><option value="45">45 s</option><option value="0">Until I answer</option></select></label>
+    </div>
+  </section>
+
+  <section class="group" aria-labelledby="h-sound">
+    <h2 class="eyebrow" id="h-sound">Sound</h2>
+    <div class="panel">
+      <div class="opts" id="alertSeg" role="group" aria-label="Ring mode">
+        <button type="button" class="opt" data-v="ring" aria-pressed="false">Ring</button>
+        <button type="button" class="opt" data-v="both" aria-pressed="false">Ring + vibrate</button>
+        <button type="button" class="opt" data-v="vibe" aria-pressed="false">Vibrate only</button>
+      </div>
+      <p class="note warn" id="vibeNote" hidden>Vibration is blocked in this view. It works in the installed app or the downloaded file.</p>
+      <div class="tones" id="tones" role="group" aria-label="Ringtone">
+        <button type="button" class="tone" data-v="ripple" aria-pressed="false"><span class="tn">Ripple</span><span class="td">Bright marimba run</span></button>
+        <button type="button" class="tone" data-v="bell" aria-pressed="false"><span class="tn">Bell</span><span class="td">Soft two-note chime</span></button>
+        <button type="button" class="tone" data-v="classic" aria-pressed="false"><span class="tn">Classic</span><span class="td">Old-school warble</span></button>
+        <button type="button" class="tone" data-v="file" aria-pressed="false"><span class="tn">Your file</span><span class="td">Any MP3 on your phone</span></button>
+      </div>
+      <div class="btnrow">
+        <button type="button" class="btn" id="previewTone"><span class="ms fill">play_arrow</span><span class="lbl">Preview</span></button>
+        <span class="filename" id="toneFile"></span>
+        <input type="file" id="fTone" accept="audio/*" hidden>
+      </div>
+      <p class="note">Sound plays at your <b>media</b> volume, so turn that up first.</p>
+    </div>
+  </section>
+
+  <section class="group" aria-labelledby="h-line">
+    <h2 class="eyebrow" id="h-line">On the line</h2>
+    <div class="panel">
+      <label class="switch" for="fVoice"><input type="checkbox" id="fVoice"><span class="track" aria-hidden="true"></span><span>Someone talks back</span></label>
+      <p class="note">After you answer, you'll hear muffled phone chatter with pauses for you to reply. It starts quiet, like an earpiece. Tap <b>Speaker</b> during the call to make it louder, or <b>Hold</b> to silence it.</p>
+      <div class="btnrow"><button type="button" class="btn" id="hearVoice"><span class="ms fill">play_arrow</span><span class="lbl">Hear a sample</span></button></div>
+    </div>
+  </section>
+
+  <section class="group" aria-labelledby="h-screen">
+    <h2 class="eyebrow" id="h-screen">Call screen</h2>
+    <div class="panel">
+      <div class="field"><span>Answer gesture</span>
+        <div class="opts" id="styleSeg" role="group" aria-label="Answer gesture">
+          <button type="button" class="opt" data-v="swipe" aria-pressed="false">Horizontal swipe</button>
+          <button type="button" class="opt" data-v="tap" aria-pressed="false">Single tap</button>
+        </div>
+      </div>
+      <div class="field"><span>Color (pick the one closest to your wallpaper)</span><div class="swatches" id="hueSeg" role="group" aria-label="Screen color"></div></div>
+      <div class="field"><span>Appearance</span>
+        <div class="opts" id="modeSeg" role="group" aria-label="Appearance">
+          <button type="button" class="opt" data-v="auto" aria-pressed="false">Match phone</button>
+          <button type="button" class="opt" data-v="dark" aria-pressed="false">Dark</button>
+          <button type="button" class="opt" data-v="light" aria-pressed="false">Light</button>
+        </div>
+      </div>
+      <p class="note">To check which gesture your phone uses, open the Phone app and go to <b>⋮ › Settings › Incoming call gesture</b>.</p>
+      <button type="button" class="btn wide" id="previewScreen"><span class="ms fill">call</span><span class="lbl">Preview the call screen (silent)</span></button>
+    </div>
+  </section>
+
+  <details class="tips" open>
+    <summary>Before you count on it</summary>
+    <ul>
+      <li>Keep the app in front with the screen on. If you lock the phone or switch apps, it can't ring until you come back to it.</li>
+      <li>Turn up <b>media</b> volume. Press a volume key and drag the slider; the ringer volume doesn't affect it.</li>
+      <li>Contacts and settings are saved on this phone, separately for each place you open it (inside Claude, the downloaded file, or the installed app).</li>
+    </ul>
+  </details>
+
+  <div class="startbar">
+    <button type="button" class="start" id="startBtn"><span class="ms fill">phone_in_talk</span><span class="startlbl" id="startLbl">Ring in 30 s</span></button>
+    <p class="startnote">The screen goes black while it waits. Press and hold it to cancel.</p>
+  </div>
+</main>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<div class="wait" id="wait" hidden>
+  <div class="wait-msg" id="waitMsg"><span id="waitText"></span><span class="holdbar"><span></span></span></div>
+</div>
+
+<div class="call cs-dark" id="call" hidden>
+  <div class="phone">
+    <div class="sbar" aria-hidden="true"><span id="sbTime">12:00</span><span class="sb-icons"><span class="ms" id="sbVibe" hidden>vibration</span><span class="ms fill">wifi</span><span class="ms fill">signal_cellular_4_bar</span><span class="ms fill">battery_full</span></span></div>
+
+    <div class="ring" id="ringView">
+      <div class="who">
+        <div class="kicker">Incoming call</div>
+        <h2 class="cname" id="cName"></h2>
+        <div class="csub" id="cSub"></div>
+      </div>
+      <div class="stage"><div class="cookie big spin"><div class="face" id="bigFace"></div></div></div>
+      <div class="chiprow"><button type="button" class="mchip" id="msgChip"><span class="ms">chat</span>Message</button></div>
+      <div class="answer" id="answerSwipe">
+        <div class="slider" id="slider">
+          <span class="fill dec"></span><span class="fill ans"></span>
+          <span class="end dec" aria-hidden="true"><span class="ms fill">call_end</span></span>
+          <span class="end ans" aria-hidden="true"><span class="ms fill">call</span></span>
+          <span class="hint l" aria-hidden="true"><span class="ms">chevron_left</span></span>
+          <span class="hint r" aria-hidden="true"><span class="ms">chevron_right</span></span>
+          <button type="button" class="thumb" id="thumb" aria-label="Swipe right to answer, left to decline"><span class="ms fill">call</span></button>
+        </div>
+        <div class="slabels" aria-hidden="true"><span>Decline</span><span>Answer</span></div>
+      </div>
+      <div class="answer taps" id="answerTap" hidden>
+        <button type="button" class="tapbtn dec" id="tapDec"><span class="ms fill">call_end</span>Decline</button>
+        <button type="button" class="tapbtn ans" id="tapAns"><span class="ms fill">call</span>Answer</button>
+      </div>
+    </div>
+
+    <div class="live" id="liveView" hidden>
+      <div class="who">
+        <div class="cookie sm"><div class="face" id="smFace"></div></div>
+        <h2 class="cname" id="lName"></h2>
+        <div class="csub" id="lStatus">0:00</div>
+      </div>
+      <div class="controls" id="ctlGrid">
+        <button type="button" class="ctl" data-k="keypad"><span class="pill"><span class="ms">dialpad</span></span>Keypad</button>
+        <button type="button" class="ctl" data-k="mute" aria-pressed="false"><span class="pill"><span class="ms">mic_off</span></span>Mute</button>
+        <button type="button" class="ctl" data-k="speaker" aria-pressed="false"><span class="pill"><span class="ms">volume_up</span></span>Speaker</button>
+        <button type="button" class="ctl" data-k="add"><span class="pill"><span class="ms">add_call</span></span>Add call</button>
+        <button type="button" class="ctl" data-k="hold" aria-pressed="false"><span class="pill"><span class="ms">pause</span></span>Hold</button>
+        <button type="button" class="ctl" data-k="video"><span class="pill"><span class="ms">videocam</span></span>Video call</button>
+      </div>
+      <div class="keypad" id="keypad" hidden>
+        <div class="kp-display" id="kpDisplay" aria-live="polite"></div>
+        <div class="kp-grid" id="kpGrid"></div>
+        <button type="button" class="kp-hide" id="kpHide"><span class="ms">keyboard_arrow_down</span>Hide keypad</button>
+      </div>
+      <button type="button" class="endbtn" id="endBtn" aria-label="End call"><span class="ms fill">call_end</span></button>
+    </div>
+
+    <div class="navbar" aria-hidden="true"><span></span></div>
+  </div>
+
+  <div class="scrim" id="sheet" hidden>
+    <div class="sheet" role="dialog" aria-label="Reply with a message"><div class="grab"></div><div id="replies"></div></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const root = document.documentElement;
+  const KEY = "decoycall.v2", OLD_KEY = "decoycall.v1";
+  const DEFAULTS = { contacts: null, cur: null, delay: 30, ringFor: 30, tone: "ripple", alert: "both", voiceOn: true, style: "swipe", hue: 255, mode: "auto" };
+  const DELAYS = [[3, "Now"], [15, "15 s"], [30, "30 s"], [60, "1 min"], [120, "2 min"], [300, "5 min"], [600, "10 min"]];
+  const HUES = [[255, "Blue"], [195, "Teal"], [145, "Green"], [80, "Amber"], [15, "Rose"], [300, "Violet"]];
+  const REPLIES = ["Can't talk now. What's up?", "I'll call you right back.", "I'll call you later.", "Can't talk now. Call me later?"];
+  const KEYS = [["1", ""], ["2", "ABC"], ["3", "DEF"], ["4", "GHI"], ["5", "JKL"], ["6", "MNO"], ["7", "PQRS"], ["8", "TUV"], ["9", "WXYZ"], ["*", ""], ["0", "+"], ["#", ""]];
+  const EAR = 0.5, SPEAKER = 1.6;
+  const uid = () => Math.random().toString(36).slice(2, 10);
+
+  /* ---------------- Saved state ---------------- */
+  let S = Object.assign({}, DEFAULTS);
+  try {
+    const v2 = JSON.parse(localStorage.getItem(KEY) || "null");
+    if (v2 && typeof v2 === "object") S = Object.assign({}, DEFAULTS, v2);
+    else {
+      const v1 = JSON.parse(localStorage.getItem(OLD_KEY) || "null");
+      if (v1 && typeof v1 === "object") {
+        ["delay", "ringFor", "tone", "style", "hue", "mode"].forEach((k) => { if (k in v1) S[k] = v1[k]; });
+        S.alert = v1.vibe === false ? "ring" : "both";
+        S.contacts = [{ id: uid(), name: v1.name || "", number: v1.number || "", label: v1.label !== undefined ? v1.label : "Mobile", photo: v1.photo || null, voice: "high" }];
+      }
+    }
+  } catch (e) {}
+  if (!Array.isArray(S.contacts) || !S.contacts.length) {
+    S.contacts = [
+      { id: uid(), name: "Mom", number: "(415) 555-0132", label: "Mobile", photo: null, voice: "high" },
+      { id: uid(), name: "Dad", number: "(415) 555-0187", label: "Mobile", photo: null, voice: "low" }
+    ];
+  }
+  if (!S.contacts.some((c) => c.id === S.cur)) S.cur = S.contacts[0].id;
+  if (S.tone === "file") S.tone = "ripple";
+  let saveWarned = false;
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(S)); }
+    catch (e) { if (!saveWarned) { saveWarned = true; toast("Couldn't save. Storage here is full or blocked; try removing a photo."); } }
+  }
+  const cur = () => S.contacts.find((c) => c.id === S.cur) || S.contacts[0];
+
+  // Scalloped "cookie" outline, like the Phone app's caller frame
+  (function makeCookie(lobes, depth, n) {
+    const pts = [];
+    for (let i = 0; i < n; i++) {
+      const t = (i / n) * Math.PI * 2;
+      const r = 0.5 - depth * (1 - Math.cos(lobes * t)) / 2;
+      pts.push((50 + r * 100 * Math.cos(t)).toFixed(2) + "% " + (50 + r * 100 * Math.sin(t)).toFixed(2) + "%");
+    }
+    root.style.setProperty("--cookie", "polygon(" + pts.join(",") + ")");
+  })(12, 0.06, 216);
+
+  const el = {};
+  ["fName","fNumber","fLabel","voiceSeg","contactList","addContact","delContact","editorH","photoBtn","photoClear","fPhoto","delaySeg","fRingFor","alertSeg","vibeNote","tones","previewTone","toneFile","fTone","fVoice","hearVoice","styleSeg","hueSeg","modeSeg","previewScreen","startBtn","startLbl","toast","ccPrev","miniFace","miniName","miniSub","wait","waitMsg","waitText","call","ringView","liveView","cName","cSub","bigFace","smFace","lName","lStatus","answerSwipe","answerTap","slider","thumb","msgChip","sheet","replies","ctlGrid","keypad","kpDisplay","kpGrid","kpHide","endBtn","sbTime","sbVibe","tapDec","tapAns"].forEach((id) => { el[id] = $(id); });
+
+  function opt(label, value, cls) {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "opt" + (cls ? " " + cls : "");
+    b.textContent = label; b.dataset.v = value; b.setAttribute("aria-pressed", "false");
+    return b;
+  }
+  DELAYS.forEach(([v, l]) => el.delaySeg.appendChild(opt(l, v, "num")));
+  HUES.forEach(([h, n]) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "swatch"; b.dataset.v = h;
+    b.style.setProperty("--sw", "oklch(0.66 0.13 " + h + ")");
+    b.setAttribute("aria-label", n); b.setAttribute("aria-pressed", "false");
+    el.hueSeg.appendChild(b);
+  });
+  REPLIES.forEach((r) => { const b = document.createElement("button"); b.type = "button"; b.textContent = r; el.replies.appendChild(b); });
+  KEYS.forEach(([d, l]) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "key"; b.dataset.d = d;
+    const big = document.createElement("b"); big.textContent = d;
+    const sm = document.createElement("small"); sm.textContent = l;
+    b.append(big, sm); el.kpGrid.appendChild(b);
+  });
+
+  /* ---------------- Audio: ringtones ---------------- */
+  let ctx = null, bus = null, sched = 0, nextT = 0, customBuf = null, customSrc = null, customName = "";
+  function ac() {
+    if (!ctx) {
+      const C = window.AudioContext || window.webkitAudioContext;
+      if (!C) return null;
+      try { ctx = new C(); } catch (e) { return null; }
+    }
+    if (ctx.state === "suspended") ctx.resume().catch(() => {});
+    return ctx;
+  }
+  function unlockAudio() {
+    const c = ac(); if (!c) return;
+    try { const b = c.createBuffer(1, 1, 22050); const s = c.createBufferSource(); s.buffer = b; s.connect(c.destination); s.start(0); } catch (e) {}
+  }
+  function env(p, t, peak, dec) {
+    p.setValueAtTime(0.0001, t);
+    p.exponentialRampToValueAtTime(peak, t + 0.006);
+    p.exponentialRampToValueAtTime(0.0001, t + dec);
+  }
+  function mallet(f, t, d, v) {
+    const o = ctx.createOscillator(), o2 = ctx.createOscillator(), g = ctx.createGain(), g2 = ctx.createGain();
+    o.type = "sine"; o.frequency.value = f;
+    o2.type = "sine"; o2.frequency.value = f * 3.93;
+    env(g.gain, t, 0.42 * v, 0.7); env(g2.gain, t, 0.1 * v, 0.12);
+    o.connect(g); g.connect(d); o2.connect(g2); g2.connect(d);
+    o.start(t); o2.start(t); o.stop(t + 0.8); o2.stop(t + 0.8);
+  }
+  function bell(f, t, d, v) {
+    [[1, 0.32, 1.6], [2, 0.08, 1.1], [2.76, 0.11, 0.7], [5.4, 0.04, 0.35]].forEach(([m, a, dec]) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.frequency.value = f * m; env(g.gain, t, a * v, dec);
+      o.connect(g); g.connect(d); o.start(t); o.stop(t + dec + 0.05);
+    });
+  }
+  function warble(t, d, dur) {
+    const o = ctx.createOscillator(), g = ctx.createGain(), lp = ctx.createBiquadFilter();
+    o.type = "square"; lp.type = "lowpass"; lp.frequency.value = 2600;
+    const step = 1 / 24;
+    for (let k = 0; k * step < dur; k++) o.frequency.setValueAtTime(k % 2 ? 1200 : 960, t + k * step);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.08, t + 0.012);
+    g.gain.setValueAtTime(0.08, t + dur - 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(lp); lp.connect(g); g.connect(d); o.start(t); o.stop(t + dur + 0.03);
+  }
+  const E5 = 659.25, Gs5 = 830.61, B5 = 987.77, E6 = 1318.51, G5 = 783.99;
+  const TONES = {
+    ripple: { len: 2.6, play(t, d) { [[0, E5], [0.11, Gs5], [0.22, B5], [0.33, E6], [0.62, B5], [0.73, Gs5], [0.84, B5], [0.95, E6]].forEach(([o, f], i) => mallet(f, t + o, d, i % 4 === 3 ? 1 : 0.8)); } },
+    bell: { len: 2.6, play(t, d) { bell(G5, t, d, 1); bell(E5, t + 0.45, d, 1); } },
+    classic: { len: 4, play(t, d) { warble(t, d, 1.0); warble(t + 1.25, d, 1.0); } }
+  };
+  function startTone(kind) {
+    const c = ac(); if (!c) return;
+    stopTone();
+    bus = c.createGain(); bus.gain.value = 1; bus.connect(c.destination);
+    if (kind === "file" && customBuf) {
+      customSrc = c.createBufferSource(); customSrc.buffer = customBuf; customSrc.loop = true;
+      customSrc.connect(bus); customSrc.start();
+      return;
+    }
+    const tone = TONES[kind] || TONES.ripple;
+    const b = bus;
+    nextT = c.currentTime + 0.05;
+    const tick = () => { if (bus !== b) return; while (nextT < c.currentTime + 1.2) { tone.play(nextT, b); nextT += tone.len; } };
+    tick(); sched = setInterval(tick, 250);
+  }
+  function stopTone() {
+    clearInterval(sched); sched = 0;
+    if (customSrc) { try { customSrc.stop(); } catch (e) {} customSrc = null; }
+    if (bus) {
+      const b = bus; bus = null;
+      try { b.gain.setTargetAtTime(0, ctx.currentTime, 0.02); } catch (e) {}
+      setTimeout(() => { try { b.disconnect(); } catch (e) {} }, 250);
+    }
+  }
+  const DT = { "1": [697, 1209], "2": [697, 1336], "3": [697, 1477], "4": [770, 1209], "5": [770, 1336], "6": [770, 1477], "7": [852, 1209], "8": [852, 1336], "9": [852, 1477], "*": [941, 1209], "0": [941, 1336], "#": [941, 1477] };
+  function dtmf(k) {
+    const c = ac(); if (!c || !DT[k]) return;
+    const t = c.currentTime, g = c.createGain();
+    g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.1, t + 0.01);
+    g.gain.setValueAtTime(0.1, t + 0.14); g.gain.linearRampToValueAtTime(0, t + 0.16);
+    g.connect(c.destination);
+    DT[k].forEach((f) => { const o = c.createOscillator(); o.frequency.value = f; o.connect(g); o.start(t); o.stop(t + 0.17); });
+  }
+
+  /* ---------------- Audio: the voice on the other end ----------------
+     A buzzy source shaped by three moving vowel formants, a little hiss for consonants,
+     squeezed through a 320–3000 Hz phone band. It talks in phrases, then pauses so you can "reply". */
+  const VOWELS = [[730, 1090, 2440], [270, 2290, 3010], [300, 870, 2240], [530, 1840, 2480], [570, 840, 2410], [440, 1020, 2240], [660, 1720, 2410], [490, 1350, 1690]];
+  function noiseBuf(c) {
+    const n = Math.floor(c.sampleRate * 2), b = c.createBuffer(1, n, c.sampleRate), d = b.getChannelData(0);
+    for (let i = 0; i < n; i++) d[i] = Math.random() * 2 - 1;
+    return b;
+  }
+  function makeVoice(c, high) {
+    const rnd = Math.random, f0 = high ? 205 : 116, fs = high ? 1.14 : 1;
+    const out = c.createGain(); out.gain.value = 0; out.connect(c.destination);
+    const lp = c.createBiquadFilter(); lp.type = "lowpass"; lp.frequency.value = 3000; lp.connect(out);
+    const hp = c.createBiquadFilter(); hp.type = "highpass"; hp.frequency.value = 320; hp.connect(lp);
+    const src = c.createOscillator(); src.type = "sawtooth"; src.frequency.value = f0;
+    const vg = c.createGain(); vg.gain.value = 0; src.connect(vg);
+    const form = [[6, 1], [9, 0.55], [11, 0.3]].map(([q, g], i) => {
+      const b = c.createBiquadFilter(); b.type = "bandpass"; b.Q.value = q; b.frequency.value = VOWELS[0][i] * fs;
+      const gg = c.createGain(); gg.gain.value = g; vg.connect(b); b.connect(gg); gg.connect(hp);
+      return b;
+    });
+    const nb = noiseBuf(c);
+    const ns = c.createBufferSource(); ns.buffer = nb; ns.loop = true;
+    const nf = c.createBiquadFilter(); nf.type = "highpass"; nf.frequency.value = 2400;
+    const ng = c.createGain(); ng.gain.value = 0; ns.connect(nf); nf.connect(ng); ng.connect(hp);
+    const hs = c.createBufferSource(); hs.buffer = nb; hs.loop = true;
+    const hf = c.createBiquadFilter(); hf.type = "bandpass"; hf.frequency.value = 1400; hf.Q.value = 0.4;
+    const hg = c.createGain(); hg.gain.value = 0.012; hs.connect(hf); hf.connect(hg); hg.connect(lp);
+    src.start(); ns.start(); hs.start(0, 0.7);
+
+    function syl(t, dur, amp, pitch, vowel) {
+      form.forEach((b, i) => b.frequency.setTargetAtTime(vowel[i] * fs, t, 0.025));
+      src.frequency.setTargetAtTime(pitch, t, 0.04);
+      vg.gain.setTargetAtTime(amp, t, 0.018);
+      vg.gain.setTargetAtTime(0, t + dur - 0.035, 0.022);
+    }
+    function fric(t, dur) { ng.gain.setTargetAtTime(0.35, t, 0.008); ng.gain.setTargetAtTime(0, t + dur, 0.012); }
+    function phrase(t, words, question) {
+      let p = f0 * (0.95 + rnd() * 0.12);
+      for (let w = 0; w < words; w++) {
+        const n = 1 + Math.floor(rnd() * 3);
+        for (let s = 0; s < n; s++) {
+          if (rnd() < 0.28) { const fd = 0.05 + rnd() * 0.05; fric(t, fd); t += fd; }
+          else if (rnd() < 0.3) t += 0.03;
+          const dur = 0.1 + rnd() * 0.15;
+          const last = w === words - 1 && s === n - 1;
+          const pitch = p * (1 + (rnd() - 0.5) * 0.16) * (last ? (question ? 1.25 : 0.82) : 1);
+          syl(t, dur, (s === 0 ? 0.95 : 0.75) * (0.85 + rnd() * 0.15), pitch, VOWELS[Math.floor(rnd() * VOWELS.length)]);
+          t += dur + 0.012;
+        }
+        t += 0.05 + rnd() * 0.1; p *= 0.985;
+      }
+      return t;
+    }
+    let at = c.currentTime + 0.7, turn = 0, stopped = false;
+    function plan() {
+      if (turn === 0) at = phrase(at, 2, true) + 1.6 + rnd() * 1.2;          // "Hello?" then wait for you
+      else {
+        const k = 1 + Math.floor(rnd() * 3);
+        for (let i = 0; i < k; i++) { at = phrase(at, 3 + Math.floor(rnd() * 7), rnd() < 0.2); at += 0.25 + rnd() * 0.45; }
+        at += 2 + rnd() * 5;                                                 // your turn to talk
+      }
+      turn++;
+    }
+    const tick = () => { if (!stopped) while (at < c.currentTime + 1.5) plan(); };
+    tick();
+    const timer = setInterval(tick, 300);
+    return {
+      level(v) { try { out.gain.setTargetAtTime(v, c.currentTime, 0.06); } catch (e) {} },
+      stop() {
+        stopped = true; clearInterval(timer);
+        try { out.gain.setTargetAtTime(0, c.currentTime, 0.02); } catch (e) {}
+        setTimeout(() => { [src, ns, hs].forEach((n) => { try { n.stop(); } catch (e) {} }); try { out.disconnect(); } catch (e) {} }, 250);
+      }
+    };
+  }
+
+  /* ---------------- Vibration, wake lock, full screen ---------------- */
+  let vibeT = 0;
+  function vib(p) { try { return navigator.vibrate ? navigator.vibrate(p) : false; } catch (e) { return false; } }
+  function startVibe() { stopVibe(); const go = () => vib(1000); go(); vibeT = setInterval(go, 2000); }
+  function stopVibe() { if (vibeT) { clearInterval(vibeT); vibeT = 0; vib(0); } }
+  function checkVibe() { el.vibeNote.hidden = S.alert === "ring" || !!vib(120); }
+
+  let wl = null;
+  async function lockOn() { try { if ("wakeLock" in navigator && !wl) { wl = await navigator.wakeLock.request("screen"); wl.addEventListener("release", () => { wl = null; }); } } catch (e) { wl = null; } }
+  function lockOff() { try { if (wl) wl.release(); } catch (e) {} wl = null; }
+
+  async function goFull() {
+    const d = document.documentElement;
+    try { if (!document.fullscreenElement && d.requestFullscreen) await d.requestFullscreen({ navigationUI: "hide" }); } catch (e) {}
+    try { if (screen.orientation && screen.orientation.lock) await screen.orientation.lock("portrait"); } catch (e) {}
+  }
+  function leaveFull() { try { if (document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {}); } catch (e) {} }
+  const dm = matchMedia("(display-mode: fullscreen)");
+  function fsSync() { el.call.classList.toggle("fs", !!document.fullscreenElement || dm.matches); }
+  document.addEventListener("fullscreenchange", fsSync);
+
+  /* ---------------- Theme for the phone screen ---------------- */
+  const mq = matchMedia("(prefers-color-scheme: dark)");
+  function phoneDark() {
+    if (S.mode === "dark") return true;
+    if (S.mode === "light") return false;
+    const t = root.getAttribute("data-theme");
+    if (t === "dark") return true;
+    if (t === "light") return false;
+    return mq.matches;
+  }
+  function applyCs() {
+    const d = phoneDark();
+    [el.call, el.ccPrev].forEach((x) => { x.classList.toggle("cs-dark", d); x.classList.toggle("cs-light", !d); });
+  }
+  if (mq.addEventListener) mq.addEventListener("change", applyCs);
+  new MutationObserver(applyCs).observe(root, { attributes: true, attributeFilter: ["data-theme"] });
+
+  /* ---------------- Rendering ---------------- */
+  const displayName = (c) => c.name.trim() || c.number.trim() || "Unknown caller";
+  const subLine = (c) => (c.name.trim() ? [c.label, c.number.trim()].filter(Boolean).join(" ") : "");
+  function paintFace(f, c) {
+    f.textContent = "";
+    if (c.photo) { const img = new Image(); img.src = c.photo; img.alt = ""; f.appendChild(img); }
+    else if (c.name.trim()) { f.textContent = Array.from(c.name.trim())[0].toUpperCase(); }
+    else { const i = document.createElement("span"); i.className = "ms fill"; i.textContent = "person"; f.appendChild(i); }
+  }
+  function press(group, value) {
+    group.querySelectorAll("[data-v]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.v === String(value))));
+  }
+  function delayLabel(v) { const d = DELAYS.find((x) => x[0] === v); return d ? d[1] : v + " s"; }
+  function renderContacts() {
+    el.contactList.textContent = "";
+    S.contacts.forEach((c) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "crow"; b.dataset.id = c.id;
+      b.setAttribute("aria-pressed", String(c.id === S.cur));
+      const av = document.createElement("span"); av.className = "cav"; paintFace(av, c);
+      const meta = document.createElement("span"); meta.className = "cmeta";
+      const nm = document.createElement("b"); nm.textContent = c.name.trim() || c.number.trim() || "New contact";
+      const sub = document.createElement("small"); sub.textContent = [c.label, c.number.trim()].filter(Boolean).join(" ") || "No number yet";
+      meta.append(nm, sub);
+      const chk = document.createElement("span"); chk.className = "ms fill chk"; chk.textContent = "check_circle"; chk.setAttribute("aria-hidden", "true");
+      b.append(av, meta, chk);
+      el.contactList.appendChild(b);
+    });
+  }
+  function fillEditor() {
+    const c = cur();
+    el.fName.value = c.name; el.fNumber.value = c.number; el.fLabel.value = c.label;
+    disarmDelete();
+  }
+  function renderSetup() {
+    const c = cur();
+    el.miniName.textContent = displayName(c);
+    el.miniSub.textContent = subLine(c);
+    paintFace(el.miniFace, c);
+    renderContacts();
+    el.editorH.textContent = "Editing " + (c.name.trim() || c.number.trim() || "new contact");
+    press(el.voiceSeg, c.voice || "low");
+    el.photoBtn.querySelector(".lbl").textContent = c.photo ? "Change photo" : "Add photo";
+    el.photoClear.hidden = !c.photo;
+    el.delContact.disabled = S.contacts.length < 2;
+    press(el.delaySeg, S.delay);
+    press(el.alertSeg, S.alert);
+    press(el.styleSeg, S.style);
+    press(el.hueSeg, S.hue);
+    press(el.modeSeg, S.mode);
+    press(el.tones, S.tone);
+    el.tones.classList.toggle("off", S.alert === "vibe");
+    el.toneFile.textContent = customBuf ? "Using " + customName : "";
+    el.fVoice.checked = !!S.voiceOn;
+    el.startLbl.textContent = displayName(c) + (S.delay <= 3 ? " calls now" : " calls in " + delayLabel(S.delay));
+    root.style.setProperty("--h", S.hue);
+    applyCs();
+  }
+  function renderCall() {
+    const c = cur();
+    el.cName.textContent = displayName(c); el.cSub.textContent = subLine(c);
+    el.lName.textContent = displayName(c);
+    paintFace(el.bigFace, c); paintFace(el.smFace, c);
+    el.answerSwipe.hidden = S.style !== "swipe";
+    el.answerTap.hidden = S.style !== "tap";
+    el.sbVibe.hidden = S.alert !== "vibe";
+    applyCs(); fsSync();
+  }
+
+  let toastT = 0;
+  function toast(msg) { el.toast.textContent = msg; el.toast.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { el.toast.hidden = true; }, 3800); }
+
+  /* ---------------- Contacts ---------------- */
+  el.contactList.addEventListener("click", (e) => {
+    const b = e.target.closest(".crow"); if (!b) return;
+    S.cur = b.dataset.id; save(); fillEditor(); renderSetup();
+  });
+  el.addContact.addEventListener("click", () => {
+    const c = { id: uid(), name: "", number: "", label: "Mobile", photo: null, voice: "low" };
+    S.contacts.push(c); S.cur = c.id; save(); fillEditor(); renderSetup();
+    el.fName.focus();
+  });
+  let delArmed = false, delT = 0;
+  function disarmDelete() { delArmed = false; clearTimeout(delT); el.delContact.classList.remove("armed"); el.delContact.querySelector(".lbl").textContent = "Delete"; }
+  el.delContact.addEventListener("click", () => {
+    if (S.contacts.length < 2) return;
+    if (!delArmed) {
+      delArmed = true; el.delContact.classList.add("armed"); el.delContact.querySelector(".lbl").textContent = "Tap again to delete";
+      delT = setTimeout(disarmDelete, 3000); return;
+    }
+    const gone = displayName(cur());
+    S.contacts = S.contacts.filter((c) => c.id !== S.cur); S.cur = S.contacts[0].id;
+    save(); fillEditor(); renderSetup(); toast("Deleted " + gone);
+  });
+  el.fName.addEventListener("input", () => { cur().name = el.fName.value; save(); renderSetup(); });
+  el.fNumber.addEventListener("input", () => { cur().number = el.fNumber.value; save(); renderSetup(); });
+  el.fLabel.addEventListener("change", () => { cur().label = el.fLabel.value; save(); renderSetup(); });
+
+  el.photoBtn.addEventListener("click", () => el.fPhoto.click());
+  el.photoClear.addEventListener("click", () => { cur().photo = null; save(); renderSetup(); });
+  el.fPhoto.addEventListener("change", () => {
+    const f = el.fPhoto.files && el.fPhoto.files[0]; el.fPhoto.value = "";
+    if (!f) return;
+    const target = cur(), url = URL.createObjectURL(f), img = new Image();
+    img.onload = () => {
+      try {
+        const s = 256, c = document.createElement("canvas"); c.width = c.height = s;
+        const m = Math.min(img.naturalWidth, img.naturalHeight);
+        c.getContext("2d").drawImage(img, (img.naturalWidth - m) / 2, (img.naturalHeight - m) / 2, m, m, 0, 0, s, s);
+        target.photo = c.toDataURL("image/jpeg", 0.82); save(); renderSetup();
+      } catch (e) { toast("That photo couldn't be read. Try a JPG or PNG."); }
+      URL.revokeObjectURL(url);
+    };
+    img.onerror = () => { toast("That photo couldn't be read. Try a JPG or PNG."); URL.revokeObjectURL(url); };
+    img.src = url;
+  });
+
+  /* ---------------- Other settings ---------------- */
+  const pick = (group, fn) => group.addEventListener("click", (e) => { const b = e.target.closest("[data-v]"); if (b) { fn(b.dataset.v); save(); renderSetup(); } });
+  pick(el.voiceSeg, (v) => { cur().voice = v; if (sample) startSample(); });
+  pick(el.delaySeg, (v) => { S.delay = Number(v); });
+  pick(el.alertSeg, (v) => { S.alert = v; checkVibe(); if (previewing) startPreview(); });
+  pick(el.styleSeg, (v) => { S.style = v; });
+  pick(el.hueSeg, (v) => { S.hue = Number(v); });
+  pick(el.modeSeg, (v) => { S.mode = v; });
+  el.fRingFor.value = String(S.ringFor);
+  el.fRingFor.addEventListener("change", () => { S.ringFor = Number(el.fRingFor.value); save(); });
+  el.fVoice.addEventListener("change", () => { S.voiceOn = el.fVoice.checked; save(); });
+
+  el.tones.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-v]"); if (!b) return;
+    const v = b.dataset.v;
+    if (v === "file" && (!customBuf || S.tone === "file")) { el.fTone.click(); return; }
+    S.tone = v; save(); renderSetup();
+    if (previewing) startPreview();
+  });
+  el.fTone.addEventListener("change", async () => {
+    const f = el.fTone.files && el.fTone.files[0]; el.fTone.value = "";
+    if (!f) return;
+    const c = ac(); if (!c) { toast("This browser can't play audio files here."); return; }
+    try {
+      const data = await f.arrayBuffer();
+      customBuf = await c.decodeAudioData(data);
+      customName = f.name; S.tone = "file"; save(); renderSetup();
+      if (previewing) startPreview();
+    } catch (err) { toast("That file couldn't be played. Try an MP3 or OGG."); }
+  });
+
+  let previewing = false, prevT = 0;
+  function setBtn(btn, on, offLabel) {
+    btn.querySelector(".ms").textContent = on ? "stop" : "play_arrow";
+    btn.querySelector(".lbl").textContent = on ? "Stop" : offLabel;
+  }
+  function startPreview() {
+    stopSample(); stopTone(); stopVibe();
+    if (S.alert !== "vibe") startTone(S.tone);
+    if (S.alert !== "ring") { startVibe(); checkVibe(); }
+    previewing = true; setBtn(el.previewTone, true, "Preview");
+    clearTimeout(prevT); prevT = setTimeout(stopPreview, 9000);
+  }
+  function stopPreview() { clearTimeout(prevT); if (!previewing) return; previewing = false; stopTone(); stopVibe(); setBtn(el.previewTone, false, "Preview"); }
+  el.previewTone.addEventListener("click", () => (previewing ? stopPreview() : startPreview()));
+
+  let sample = null, sampleT = 0;
+  function startSample() {
+    stopPreview(); stopSample();
+    const c = ac(); if (!c) return;
+    sample = makeVoice(c, cur().voice === "high"); sample.level(SPEAKER * 0.8);
+    setBtn(el.hearVoice, true, "Hear a sample");
+    sampleT = setTimeout(stopSample, 8000);
+  }
+  function stopSample() { clearTimeout(sampleT); if (!sample) return; sample.stop(); sample = null; setBtn(el.hearVoice, false, "Hear a sample"); }
+  el.hearVoice.addEventListener("click", () => (sample ? stopSample() : startSample()));
+
+  /* ---------------- The call flow ---------------- */
+  let phase = "idle", target = 0, waitT = 0, flashT = 0, holdT = 0, ringT = 0, callT = 0, clockT = 0, callStart = 0, held = false, speaker = false, kpDigits = "", voice = null;
+  const fmt = (sec) => Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0");
+
+  function prep() {
+    stopPreview(); stopSample(); unlockAudio();
+    if (S.tone === "file" && !customBuf) S.tone = "ripple";
+    goFull(); lockOn(); root.classList.add("lock");
+  }
+  el.startBtn.addEventListener("click", () => { prep(); beginWait(); });
+  el.previewScreen.addEventListener("click", () => { prep(); ring(true); });
+
+  function beginWait() {
+    phase = "waiting"; target = Date.now() + S.delay * 1000;
+    el.wait.hidden = false; flashMsg();
+    clearInterval(waitT); waitT = setInterval(checkWait, 250); checkWait();
+  }
+  function checkWait() {
+    if (phase !== "waiting") return;
+    const left = target - Date.now();
+    if (left <= 0) { clearInterval(waitT); el.wait.hidden = true; el.wait.classList.remove("holding"); ring(false); return; }
+    el.waitText.textContent = el.wait.classList.contains("holding") ? "Keep holding to cancel" : "Rings in " + fmt(Math.ceil(left / 1000)) + " · hold to cancel";
+  }
+  function flashMsg() { el.waitMsg.classList.add("show"); clearTimeout(flashT); flashT = setTimeout(() => el.waitMsg.classList.remove("show"), 2600); }
+  function cancelWait() {
+    if (phase !== "waiting") return;
+    clearInterval(waitT); clearTimeout(holdT); phase = "idle";
+    el.wait.hidden = true; el.wait.classList.remove("holding");
+    root.classList.remove("lock"); lockOff(); leaveFull();
+    toast("Canceled. Nothing will ring.");
+  }
+  el.wait.addEventListener("pointerdown", () => { flashMsg(); el.wait.classList.add("holding"); checkWait(); clearTimeout(holdT); holdT = setTimeout(cancelWait, 1200); });
+  ["pointerup", "pointercancel", "pointerleave"].forEach((t) => el.wait.addEventListener(t, () => { clearTimeout(holdT); el.wait.classList.remove("holding"); checkWait(); }));
+  el.wait.addEventListener("contextmenu", (e) => e.preventDefault());
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && phase === "waiting") cancelWait(); });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible") return;
+    if (phase !== "idle") lockOn();
+    if (phase === "waiting") checkWait();
+  });
+
+  function updateClock() { const d = new Date(); el.sbTime.textContent = (d.getHours() % 12 || 12) + ":" + String(d.getMinutes()).padStart(2, "0"); }
+  function showCall() {
+    el.call.hidden = false; void el.call.offsetWidth; el.call.classList.add("in");
+    updateClock(); clearInterval(clockT); clockT = setInterval(updateClock, 10000);
+  }
+  function ring(preview) {
+    phase = preview ? "preview" : "ringing";
+    renderCall();
+    el.ringView.hidden = false; el.liveView.hidden = true; el.sheet.hidden = true;
+    resetSlider(); showCall();
+    if (!preview) {
+      if (S.alert !== "vibe") startTone(S.tone);
+      if (S.alert !== "ring") startVibe();
+      clearTimeout(ringT);
+      if (S.ringFor > 0) ringT = setTimeout(missed, S.ringFor * 1000);
+    }
+  }
+  function stopRing() { stopTone(); stopVibe(); clearTimeout(ringT); }
+  const ringing = () => phase === "ringing" || phase === "preview";
+  const voiceLevel = () => (held ? 0 : speaker ? SPEAKER : EAR);
+
+  function answer() {
+    if (!ringing()) return;
+    stopRing(); phase = "live";
+    el.sheet.hidden = true; el.ringView.hidden = true; el.liveView.hidden = false;
+    resetControls(); callStart = Date.now(); tickCall();
+    clearInterval(callT); callT = setInterval(tickCall, 500);
+    if (S.voiceOn) { const c = ac(); if (c) { voice = makeVoice(c, cur().voice === "high"); voice.level(voiceLevel()); } }
+  }
+  function decline() { if (!ringing()) return; closeCall(); }
+  function missed() { if (phase !== "ringing") return; const n = displayName(cur()); closeCall(); toast("Missed call from " + n); }
+  function tickCall() { el.lStatus.textContent = held ? "On hold" : fmt(Math.floor((Date.now() - callStart) / 1000)); }
+  function stopVoice() { if (voice) { voice.stop(); voice = null; } }
+  function endCall() {
+    if (phase !== "live") return;
+    phase = "ending"; clearInterval(callT); stopVoice();
+    el.lStatus.textContent = "Call ended · " + fmt(Math.floor((Date.now() - callStart) / 1000));
+    el.liveView.classList.add("ended");
+    setTimeout(closeCall, 1500);
+  }
+  function closeCall() {
+    phase = "idle"; stopRing(); stopVoice(); clearInterval(callT); clearInterval(clockT);
+    el.sheet.hidden = true; el.call.classList.remove("in");
+    setTimeout(() => { if (phase === "idle") { el.call.hidden = true; el.liveView.classList.remove("ended"); } }, 220);
+    root.classList.remove("lock"); lockOff(); leaveFull();
+  }
+
+  // Horizontal swipe
+  let drag = null;
+  const maxX = () => Math.max(0, (el.slider.clientWidth - el.thumb.offsetWidth) / 2 - 6);
+  function setX(x) {
+    const m = maxX(), p = m > 0 ? x / m : 0;
+    el.thumb.style.transform = "translateX(" + x + "px)";
+    el.slider.style.setProperty("--pa", Math.max(p, 0).toFixed(3));
+    el.slider.style.setProperty("--pd", Math.max(-p, 0).toFixed(3));
+  }
+  function resetSlider() { drag = null; el.slider.classList.remove("spring", "dragging", "nudge"); setX(0); }
+  function nudge() { el.slider.classList.remove("nudge"); void el.slider.offsetWidth; el.slider.classList.add("nudge"); }
+  el.thumb.addEventListener("pointerdown", (e) => {
+    if (!ringing()) return;
+    drag = { x0: e.clientX, x: 0, moved: false };
+    try { el.thumb.setPointerCapture(e.pointerId); } catch (err) {}
+    el.slider.classList.add("dragging"); el.slider.classList.remove("spring", "nudge");
+  });
+  el.thumb.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    const m = maxX();
+    drag.x = Math.max(-m, Math.min(m, e.clientX - drag.x0));
+    if (Math.abs(drag.x) > 5) drag.moved = true;
+    setX(drag.x);
+  });
+  const release = () => {
+    if (!drag) return;
+    const m = maxX(), p = m > 0 ? drag.x / m : 0, moved = drag.moved;
+    drag = null;
+    el.slider.classList.remove("dragging"); el.slider.classList.add("spring");
+    if (p > 0.72) { setX(m); setTimeout(answer, 150); }
+    else if (p < -0.72) { setX(-m); setTimeout(decline, 150); }
+    else { setX(0); if (!moved) nudge(); }
+  };
+  el.thumb.addEventListener("pointerup", release);
+  el.thumb.addEventListener("pointercancel", release);
+  el.thumb.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowRight") { e.preventDefault(); answer(); }
+    if (e.key === "ArrowLeft") { e.preventDefault(); decline(); }
+  });
+
+  // Single tap
+  el.tapAns.addEventListener("click", answer);
+  el.tapDec.addEventListener("click", decline);
+
+  // Quick replies
+  el.msgChip.addEventListener("click", () => { if (ringing()) el.sheet.hidden = false; });
+  el.sheet.addEventListener("click", (e) => { if (e.target === el.sheet) el.sheet.hidden = true; });
+  el.replies.addEventListener("click", (e) => { if (e.target.closest("button")) { el.sheet.hidden = true; decline(); } });
+
+  // In-call controls
+  function showKeypad(on) { el.ctlGrid.hidden = on; el.keypad.hidden = !on; el.liveView.classList.toggle("kp", on); }
+  function resetControls() {
+    held = false; speaker = false; kpDigits = ""; el.kpDisplay.textContent = "";
+    el.ctlGrid.querySelectorAll(".ctl").forEach((b) => { b.classList.remove("on", "blip"); if (b.hasAttribute("aria-pressed")) b.setAttribute("aria-pressed", "false"); });
+    showKeypad(false);
+  }
+  el.ctlGrid.addEventListener("click", (e) => {
+    const b = e.target.closest(".ctl"); if (!b || phase !== "live") return;
+    const k = b.dataset.k;
+    if (k === "keypad") { showKeypad(true); return; }
+    if (k === "mute" || k === "speaker" || k === "hold") {
+      const on = b.classList.toggle("on"); b.setAttribute("aria-pressed", String(on));
+      if (k === "hold") { held = on; tickCall(); }
+      if (k === "speaker") speaker = on;
+      if (voice) voice.level(voiceLevel());
+      return;
+    }
+    b.classList.add("blip"); setTimeout(() => b.classList.remove("blip"), 320);
+  });
+  el.kpGrid.addEventListener("click", (e) => {
+    const k = e.target.closest(".key"); if (!k || phase !== "live") return;
+    dtmf(k.dataset.d); kpDigits = (kpDigits + k.dataset.d).slice(-16); el.kpDisplay.textContent = kpDigits;
+  });
+  el.kpHide.addEventListener("click", () => showKeypad(false));
+  el.endBtn.addEventListener("click", endCall);
+
+  /* ---------------- Start ---------------- */
+  fillEditor(); renderSetup(); fsSync();
+  if (S.alert !== "ring" && !navigator.vibrate) el.vibeNote.hidden = false;
+  try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {}
+  if ("serviceWorker" in navigator && location.protocol === "https:" && document.querySelector('link[rel="manifest"]')) {
+    window.addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(() => {}); });
+  }
+})();
+</script>
+
+</body>
+</html>
